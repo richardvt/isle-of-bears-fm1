@@ -53,3 +53,9 @@ shot rules.png
 tap EDIT
 wait 100
 expect help 0
+# the keys go out over USB-MIDI as notes as well
+key 7 down
+wait 30
+key 7 up
+wait 30
+expect midi_out 16

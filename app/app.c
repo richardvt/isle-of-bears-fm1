@@ -980,7 +980,16 @@ static void ai_frame(void)
 static void input(void)
 {
     uint32_t keys = plat_keys(), btn = plat_buttons(), down = keys & ~ui.keys, bdown = btn & ~ui.btn, now = plat_ms();
+    uint32_t up = ui.keys & ~keys, k;
     int32_t e = plat_enc(EN_SELECT);
+    for (k = 0; k < NKEYS; k++) {        /* the keys go out over USB-MIDI too (key 0 is F3, MIDI 53), so the FM-1 still
+                                          * plays a computer's games and synths while this firmware is on it */
+        uint32_t note = 53u + k;
+        if (down >> k & 1u)
+            plat_midi_send(0x09u | 0x90u << 8 | note << 16 | 100u << 24, TO_USB);
+        else if (up >> k & 1u)
+            plat_midi_send(0x08u | 0x80u << 8 | note << 16, TO_USB);
+    }
     ui.keys = keys;
     ui.btn = btn;
     if (bdown >> B_SEQ & 1u) {           /* SEQ: the music on or off, anywhere */
