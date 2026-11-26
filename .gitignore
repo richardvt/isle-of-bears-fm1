@@ -1,0 +1,5 @@
+app/build/
+app/web/
+tests/build/
+firmware.json.bak
+.DS_Store

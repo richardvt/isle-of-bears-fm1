@@ -1,0 +1,19 @@
+# Isle of Bears for the M-VAVE FM-1, on fm1-base (tools/build.py)
+name = "IsleOfBears"
+id_prefix = "FM-1_7110"        # package identity: dev FM-1_711000, releases FM-1_7110XXYY
+usb_manufacturer = "HEYBYE GAMING"
+usb_product = "Isle of Bears FM-1"
+o2 = []
+words = "words.tsv"
+ble = false
+title = "Isle of Bears"
+tagline = "stack your bears, rule the isles"
+repo = "https://github.com/richardvt/isle-of-bears-fm1"
+licence = "MPL-2.0"
+credits = "Isle of Bears by HEYBYE GAMING. Built on fm1-base by Charles Vestal and felucca-bsp"
+author = "HEYBYE GAMING"
+description = "Isle of Bears, the two-player card-and-stacking game, against the computer on the FM-1's own screen and keys."
+tags = ["game"]
+install = "https://github.com/richardvt/isle-of-bears-fm1/releases"
+site = "https://isle-of-bears.heybyedesign.com"
+screenshot = "app/docs/img/play.png"

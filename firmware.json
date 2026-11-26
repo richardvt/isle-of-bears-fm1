@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "isleofbears",
+  "name": "Isle of Bears",
+  "author": "HEYBYE GAMING",
+  "license": "MPL-2.0",
+  "tagline": "stack your bears, rule the isles",
+  "description": "Isle of Bears, the two-player card-and-stacking game, against the computer on the FM-1's own screen and keys.",
+  "tags": ["game"],
+  "install": "https://github.com/richardvt/isle-of-bears-fm1/releases",
+  "site": "https://isle-of-bears.heybyedesign.com",
+  "source": "https://github.com/richardvt/isle-of-bears-fm1",
+  "screenshot": "app/docs/img/play.png",
+  "hardware": {
+    "models": ["FM-1"],
+    "flash": ["856014", "B36014"],
+    "features": ["usb-audio-in", "usb-audio-out", "screen-reader"]
+  },
+  "credits": "Isle of Bears by HEYBYE GAMING. Built on fm1-base by Charles Vestal and felucca-bsp"
+}

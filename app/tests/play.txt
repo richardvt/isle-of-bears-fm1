@@ -1,0 +1,55 @@
+# Isle of Bears in the host simulator: the title, a game started, cards played with the pad and F5, the computer's
+# answer, the help. fm1/build.sh --host, then app/build/host/isleofbears_host app/tests/play.txt OUT
+wait 700
+expect scene 0
+shot title.png
+key 24 down
+wait 40
+key 24 up
+wait 100
+expect scene 1
+expect turn 1
+expect ai 0
+shot hand.png
+# the first card played: then its first target, the next, F5 each time, until the turn waits for F5 to confirm
+key 4 down
+wait 40
+key 4 up
+wait 60
+shot hand2.png
+key 24 down
+wait 40
+key 24 up
+wait 100
+shot target.png
+key 24 down
+wait 40
+key 24 up
+wait 100
+shot target2.png
+key 24 down
+wait 40
+key 24 up
+wait 100
+key 24 down
+wait 40
+key 24 up
+wait 100
+key 24 down
+wait 40
+key 24 up
+wait 100
+shot after.png
+wait 6000
+shot cpu.png
+tap EDIT
+wait 100
+expect help 1
+shot help.png
+tap EDIT
+wait 100
+expect help 2
+shot rules.png
+tap EDIT
+wait 100
+expect help 0
