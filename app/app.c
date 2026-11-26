@@ -10,6 +10,7 @@
 #include "iob.h"
 #include "iob_ai.h"
 #include "art.h"
+#include "music.h"
 
 #define PAD_L 0u
 #define PAD_U 1u
@@ -65,7 +66,10 @@ static const char *const EFF_HELP[NEFF] = {
 typedef struct {
     uint32_t magic;
     uint16_t wins, losses;
-} settings_t;
+    uint8_t music_off;                   /* SEQ: the music off (0, the default: on) */
+    uint8_t music_level;                 /* KNOB 1: 0 .. 10 */
+    uint8_t rsv[2];
+} settings_t;                            /* (0.1's was the first 8 bytes: read as such, the music its defaults) */
 static settings_t set;
 
 /* ------------------------------------------------------------------ sound --- */
@@ -115,6 +119,10 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     static uint32_t seen;
     uint32_t i, seq = sfx_seq;
     float gain = (float)master_q12 / 4096.0f * 2500000.0f;
+    static float mbuf[APP_BLOCK];
+    for (i = 0; i < n && i < APP_BLOCK; i++)
+        mbuf[i] = 0.0f;
+    mus_render(mbuf, n < APP_BLOCK ? n : APP_BLOCK);
     if (seq != seen) {
         seen = seq;
         vx_start(sfx_req);
@@ -145,6 +153,8 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
             s *= vx.env * gain;
             vx.env *= vx.dec;
         }
+        if (i < APP_BLOCK)
+            s += mbuf[i] * gain * 0.7f;  /* the music, under the sound effects */
         lr[2 * i] = (int32_t)s;
         lr[2 * i + 1] = (int32_t)s;
     }
@@ -181,6 +191,7 @@ static struct {
 } ui;
 
 static void say_status(void);
+static void music_changed(void);
 
 static void msg_set(const char *s, uint16_t col, uint32_t ms)
 {
@@ -691,7 +702,7 @@ static void draw_box(const char *a, const char *b, const char *c)
 
 static const char *const HELP[][2] = {
     {"F3 / A3", "LEFT / RIGHT"}, {"F#3 / G3", "UP / DOWN"}, {"SELECT KNOB", "NEXT / PREVIOUS"},
-    {"F5", "PICK, PLAY, CONFIRM"}, {"G5", "TAKE BACK THIS TURN"}, {"HOME", "TITLE"}, {"EDIT", "HELP, THEN THE RULEBOOK"},
+    {"F5", "PICK, PLAY, CONFIRM"}, {"G5", "TAKE BACK THIS TURN"}, {"SEQ / KNOB 1", "MUSIC ON-OFF / LEVEL"}, {"HOME", "TITLE"}, {"EDIT", "HELP, THEN THE RULEBOOK"},
 };
 
 static void draw_help(void)
@@ -701,12 +712,12 @@ static void draw_help(void)
     frame(10, 22, 220, 196, 2, C_ORANGE);
     text_c(120, 28, &FONT_B, "HOW TO PLAY", C_PAPER);
     for (k = 0; k < sizeof HELP / sizeof HELP[0]; k++) {
-        text(20, 50 + (int32_t)k * 17, &FONT_XS, HELP[k][0], C_ORANGE);
-        text(104, 50 + (int32_t)k * 17, &FONT_XS, HELP[k][1], C_PAPER);
+        text(20, 48 + (int32_t)k * 15, &FONT_XS, HELP[k][0], C_ORANGE);
+        text(104, 48 + (int32_t)k * 15, &FONT_XS, HELP[k][1], C_PAPER);
     }
-    text_c(120, 172, &FONT_T, "WIN: EVERY STACK TOPPED BY YOUR BEARS", C_SKY);
-    text_c(120, 186, &FONT_T, "SIX ON ONE SPACE: THE OTHERS FALL IN", C_SKY);
-    text_c(120, 200, &FONT_T, "AN EMPTY ISLE SINKS  -  EDIT: THE RULEBOOK", C_SKY);
+    text_c(120, 174, &FONT_T, "WIN: EVERY STACK TOPPED BY YOUR BEARS", C_SKY);
+    text_c(120, 188, &FONT_T, "SIX ON ONE SPACE: THE OTHERS FALL IN", C_SKY);
+    text_c(120, 202, &FONT_T, "AN EMPTY ISLE SINKS  -  EDIT: THE RULEBOOK", C_SKY);
 }
 
 /* the rulebook is on the web: its QR code (tools/gen_art.py), for a phone */
@@ -972,6 +983,19 @@ static void input(void)
     int32_t e = plat_enc(EN_SELECT);
     ui.keys = keys;
     ui.btn = btn;
+    if (bdown >> B_SEQ & 1u) {           /* SEQ: the music on or off, anywhere */
+        set.music_off = !set.music_off;
+        music_changed();
+    }
+    {                                    /* KNOB 1: the music's level */
+        int32_t k = plat_enc(EN_K1);
+        if (k) {
+            int32_t l = (int32_t)set.music_level + (k > 0 ? 1 : -1);
+            set.music_level = (uint8_t)(l < 0 ? 0 : l > 10 ? 10 : l);
+            set.music_off = 0;
+            music_changed();
+        }
+    }
     if (bdown >> B_EDIT & 1u) {          /* EDIT: the controls, then the rulebook's QR code, then back */
         ui.help = (uint8_t)((ui.help + 1u) % 3u);
         ui.redraw = 1;
@@ -1067,10 +1091,49 @@ static void say_status(void)
 /* ------------------------------------------------------------------ the contract --- */
 void app_init(void)
 {
-    if (plat_store_load(OBJ_SETTINGS, &set, sizeof set) != (int)sizeof set || set.magic != SET_MAGIC) {
+    int n = plat_store_load(OBJ_SETTINGS, &set, sizeof set);
+    if (n == 8 && set.magic == SET_MAGIC) {   /* 0.1's record: the music its defaults */
+        set.music_off = 0;
+        set.music_level = 6;
+    } else if (n != (int)sizeof set || set.magic != SET_MAGIC || set.music_level > 10u || set.music_off > 1u) {
         set.magic = SET_MAGIC;
         set.wins = set.losses = 0;
+        set.music_off = 0;
+        set.music_level = 6;
     }
+    mus_init();
+}
+
+/* which song: the title's, the game's, the tense one when either side is down to one stack on top; none at the end */
+static void music_pick(void)
+{
+    uint8_t want = SONG_NONE;
+    mus_gain = set.music_off ? 0.0f : (float)set.music_level / 10.0f;
+    if (ui.scene == SC_TITLE)
+        want = SONG_TITLE;
+    else if (ui.scene == SC_PLAY) {
+        uint32_t i, top[2] = {0, 0};
+        for (i = 0; i < 16u; i++)
+            if (occupied_at(&G, (int)i))
+                top[top_color(&G, (int)i)]++;
+        want = (top[0] <= 1u || top[1] <= 1u) ? SONG_TENSE : SONG_PLAY;
+    }
+    mus_want = want;
+}
+
+static uint32_t music_saved_at;          /* a change to the music settings, saved a moment later (a turn of KNOB 1 is
+                                          * many detents: one write) */
+static void music_changed(void)
+{
+    char t[32] = "MUSIC ";
+    if (set.music_off)
+        text_cat(t, "OFF");
+    else {
+        num_cat(t, set.music_level * 10u);
+        text_cat(t, "%");
+    }
+    msg_set(t, C_SKY, 900);
+    music_saved_at = plat_ms() | 1u;
 }
 
 void app_ui_init(void)
@@ -1086,13 +1149,18 @@ void app_frame(void)
     ui.frame++;
     input();
     ai_frame();
+    music_pick();
+    if (music_saved_at && now - music_saved_at > 1500u) {
+        music_saved_at = 0;
+        plat_store_save(OBJ_SETTINGS, &set, sizeof set);
+    }
     ann_tick(now);
     if (ui.msg_until && now >= ui.msg_until && last_msg != ui.msg_until) {
         last_msg = ui.msg_until;
         ui.redraw = 1;
     }
     plat_glow(1);                        /* the controls in play lit: the pad, F5, G5, EDIT and HOME */
-    plat_leds(1u << B_EDIT | 1u << B_HOME | (ui.scene != SC_PLAY ? 1u << B_PLAY : 0u),
+    plat_leds(1u << B_EDIT | 1u << B_HOME | (set.music_off ? 0u : 1u << B_SEQ) | (ui.scene != SC_PLAY ? 1u << B_PLAY : 0u),
               human_turn() || ui.scene != SC_PLAY
                   ? PAD_KEYS | 1u << KEY_A | (human_turn() && (G.nfl || G.pend) ? 1u << KEY_B : 0u)
                   : 0u);
@@ -1124,6 +1192,12 @@ int app_expect(const char *what, int *got)
         *got = ui.cur_cell;
     else if (!strcmp(what, "finished"))  /* a game played to the end since boot (or before: the record) */
         *got = set.wins + set.losses > 0;
+    else if (!strcmp(what, "music_bad"))
+        *got = (int)mus_bad;
+    else if (!strcmp(what, "song"))
+        *got = mus_want == SONG_NONE ? -1 : mus_want;
+    else if (!strcmp(what, "music"))
+        *got = set.music_off ? -1 : set.music_level;
     else if (!strcmp(what, "help"))
         *got = ui.help;
     else

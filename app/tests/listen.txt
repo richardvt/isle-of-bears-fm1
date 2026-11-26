@@ -1,0 +1,12 @@
+# a whole loop of the title's song and of the game's, recorded (app/build/shots/*.wav), to listen to
+wait 300
+wav song_title.wav
+wait 8700
+wavstop
+key 24 down
+wait 40
+key 24 up
+wait 100
+wav song_game.wav
+wait 21000
+wavstop

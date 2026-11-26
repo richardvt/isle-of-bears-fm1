@@ -1,0 +1,32 @@
+# the music: the title's song, the game's, SEQ off and on, KNOB 1, and a recording to hear that it sounds
+wait 700
+expect song 0
+expect music 6
+expect music_bad 0
+wav title_music.wav
+wait 4000
+wavstop
+expect peak_db_min -30
+key 24 down
+wait 40
+key 24 up
+wait 200
+expect song 1
+wav game_music.wav
+wait 6000
+wavstop
+expect peak_db_min -30
+tap SEQ
+wait 100
+expect music -1
+tap SEQ
+wait 100
+expect music 6
+turn K1 -2
+wait 100
+expect music 4
+tap EDIT
+wait 100
+shot help_music.png
+tap HOME
+wait 100
