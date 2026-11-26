@@ -12,7 +12,9 @@
  *   0..15  a cell          A_CARD+id  a card (to play, or a card target)          A_DIR+k  a push direction */
 #pragma once
 #include <stdint.h>
+#if __has_include(<string.h>)            /* the host; on the FM-1, fm1-base's libc.c is already in the unity build */
 #include <string.h>
+#endif
 
 enum { IOB_W, IOB_B };
 enum { WIN_NONE = 0xFF, WIN_DRAW = 2 };
